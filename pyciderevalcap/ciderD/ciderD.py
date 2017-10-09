@@ -9,12 +9,16 @@
 
 from ciderD_scorer import CiderScorer
 import pdb
+import pickle
+import os
+
 
 class CiderD:
     """
     Main Class to compute the CIDEr metric
 
     """
+
     def __init__(self, n=4, sigma=6.0, df="corpus"):
         # set cider to sum over 1 to 4-grams
         self._n = n
@@ -22,6 +26,7 @@ class CiderD:
         self._sigma = sigma
         # set which where to compute document frequencies from
         self._df = df
+        self.document_frequency = pickle.load(open(os.path.join('data', self._df + '.p'), 'r'))
 
     def compute_score(self, gts, res):
         """
@@ -45,7 +50,7 @@ class CiderD:
             assert(len(ref) > 0)
             cider_scorer += (hypo[0], ref)
 
-        (score, scores) = cider_scorer.compute_score(self._df)
+        (score, scores) = cider_scorer.compute_score(self._df, self.document_frequency)
 
         return score, scores
 
