@@ -54,6 +54,20 @@ class CiderScorer(object):
     """CIDEr scorer.
     """
 
+    def __init__(self, test=None, refs=None, n=4, sigma=6.0, df='corpus'):
+        ''' singular instance '''
+        self.n = n
+        self.sigma = sigma
+        self.crefs = []
+        self.ctest = []
+        self.ref_len = None
+        self.df_mode = df
+        if self.df_mode != 'corpus':
+            pkl_file = pickle.load(open(os.path.join('data', self.df_mode + '.p'), 'r'))
+            self.ref_len = pkl_file['ref_len']
+            self.document_frequency = pkl_file['document_frequency']
+        self.cook_append(test, refs)
+
     def copy(self):
         ''' copy the refs.'''
         new = CiderScorer(n=self.n)
@@ -61,15 +75,9 @@ class CiderScorer(object):
         new.crefs = copy.copy(self.crefs)
         return new
 
-    def __init__(self, test=None, refs=None, n=4, sigma=6.0):
-        ''' singular instance '''
-        self.n = n
-        self.sigma = sigma
+    def clear(self):
         self.crefs = []
         self.ctest = []
-        self.document_frequency = defaultdict(float)
-        self.cook_append(test, refs)
-        self.ref_len = None
 
     def cook_append(self, test, refs):
         '''called by constructor and __iadd__ to avoid creating new instances.'''
@@ -111,7 +119,7 @@ class CiderScorer(object):
                 self.document_frequency[ngram] += 1
             # maxcounts[ngram] = max(maxcounts.get(ngram,0), count)
 
-    def compute_cider(self, df_mode):
+    def compute_cider(self):
         def counts2vec(cnts):
             """
             Function maps counts of ngram to vector of tfidf weights.
@@ -167,11 +175,8 @@ class CiderScorer(object):
             return val
 
         # compute log reference length
-        if df_mode == "corpus":
+        if self.df_mode == "corpus":
             self.ref_len = np.log(float(len(self.crefs)))
-        elif df_mode == "coco-val-df":
-            # if coco option selected, use length of coco-val set
-            self.ref_len = np.log(float(40504))
 
         scores = []
         for test, refs in zip(self.ctest, self.crefs):
@@ -192,17 +197,15 @@ class CiderScorer(object):
             scores.append(score_avg)
         return scores
 
-    def compute_score(self, df_mode, df, option=None, verbose=0):
+    def compute_score(self, option=None, verbose=0):
         # compute idf
-        if df_mode == "corpus":
+        if self.df_mode == "corpus":
             self.compute_doc_freq()
             # assert to check document frequency
             assert(len(self.ctest) >= max(self.document_frequency.values()))
             # import json for now and write the corresponding files
-        else:
-            self.document_frequency = df
         # compute cider score
-        score = self.compute_cider(df_mode)
+        score = self.compute_cider()
         # debug
         # print score
         return np.mean(np.array(score)), np.array(score)

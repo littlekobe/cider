@@ -25,8 +25,7 @@ class CiderD:
         # set the standard deviation parameter for gaussian penalty
         self._sigma = sigma
         # set which where to compute document frequencies from
-        self._df = df
-        self.document_frequency = pickle.load(open(os.path.join('data', self._df + '.p'), 'r'))
+        self.cider_scorer = CiderScorer(n=self._n, df=df)
 
     def compute_score(self, gts, res):
         """
@@ -35,22 +34,20 @@ class CiderD:
                 ref_for_image (dict)  : dictionary with key <image> and value <tokenized reference sentence>
         :return: cider (float) : computed CIDEr score for the corpus
         """
-
-        cider_scorer = CiderScorer(n=self._n)
-
+        self.cider_scorer.clear()
         for res_id in res:
 
             hypo = res_id['caption']
-            ref = gts[res_id['image_id']]
+            ref = gts[res_id['id']]
 
             # Sanity check.
             assert(type(hypo) is list)
             assert(len(hypo) == 1)
             assert(type(ref) is list)
             assert(len(ref) > 0)
-            cider_scorer += (hypo[0], ref)
+            self.cider_scorer += (hypo[0], ref)
 
-        (score, scores) = cider_scorer.compute_score(self._df, self.document_frequency)
+        (score, scores) = self.cider_scorer.compute_score()
 
         return score, scores
 
